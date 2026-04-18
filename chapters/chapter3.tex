@@ -1,8 +1,3 @@
-\begin{savequote}[75mm]
-Triển khai tốt là chìa khóa để chuyển từ thiết kế sang thực tế.
-\qauthor{Quản lý dự án}
-\end{savequote}
-
 \chapter{Triển khai cài đặt cơ sở dữ liệu}
 
 \newthought{Triển khai cài đặt cơ sở dữ liệu} là giai đoạn chuyển đổi lược đồ thiết kế thành các bảng, index, view và trigger thực tế. Phần này trình bày chi tiết cấu trúc từng bảng, các ràng buộc, index tối ưu hóa, view để lấy dữ liệu và trigger tự động.
@@ -60,7 +55,7 @@ DELIMITER ;
 
 \section{User}
 
-\subsection{3.2.1 Table users}
+\subsection{Table users}
 
 Bảng \texttt{users} lưu trữ thông tin chi tiết của người dùng.
 
@@ -107,7 +102,7 @@ JOIN accounts a ON u.account_id = a.account_id;
 
 Không có trigger riêng cho bảng users.
 
-\subsection{3.2.2 Table addresses}
+\subsection{Table addresses}
 
 Bảng \texttt{user\_addresses} lưu trữ các địa chỉ của người dùng.
 
@@ -119,7 +114,7 @@ Bảng \texttt{user\_addresses} lưu trữ các địa chỉ của người dùn
 
 \subsubsection{Trigger}
 
-\subsection{3.2.3 Table phone\_numbers}
+\subsection{Table phone\_numbers}
 
 Bảng \texttt{user\_phone\_numbers} lưu trữ các số điện thoại của người dùng.
 
@@ -133,49 +128,49 @@ Bảng \texttt{user\_phone\_numbers} lưu trữ các số điện thoại của 
 
 \section{Product}
 
-\subsection{3.3.1 Table product}
+\subsection{Table product}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
 
-\subsection{3.3.2 Table type}
+\subsection{Table type}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
 
-\subsection{3.3.3 Table type\_values}
+\subsection{Table type\_values}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
 
-\subsection{3.3.4 Table variants}
+\subsection{Table variants}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
 
-\subsection{3.3.5 Table variant\_values}
+\subsection{Table variant\_values}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
 
-\subsection{3.3.6 Table product\_extra\_images}
+\subsection{Table product\_extra\_images}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
 
-\subsection{3.3.7 Table product\_reviews}
+\subsection{Table product\_reviews}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
 
-\subsection{3.3.8 Table product\_review\_images}
+\subsection{Table product\_review\_images}
 
 \subsubsection{Cấu trúc bảng}
 
@@ -193,7 +188,7 @@ Bảng \texttt{categories} lưu trữ các danh mục sản phẩm.
 
 \section{Order}
 
-\subsection{3.5.1 Table orders}
+\subsection{Table orders}
 
 \subsubsection{Cấu trúc bảng}
 
@@ -203,7 +198,7 @@ Bảng \texttt{categories} lưu trữ các danh mục sản phẩm.
 
 \subsubsection{Trigger}
 
-\subsection{3.5.2 Table order\_tracking\_locations}
+\subsection{Table order\_tracking\_locations}
 
 \subsubsection{Cấu trúc bảng}
 
