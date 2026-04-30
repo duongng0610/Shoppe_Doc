@@ -53,6 +53,10 @@ END$$
 DELIMITER ;
 \end{verbatim}
 
+\subsection{Procedure}
+
+\subsection{Function}
+
 \section{User}
 
 \subsection{Table users}
@@ -102,6 +106,10 @@ JOIN accounts a ON u.account_id = a.account_id;
 
 Không có trigger riêng cho bảng users.
 
+\subsubsection{Procedure}
+
+\subsubsection{Function}
+
 \subsection{Table addresses}
 
 Bảng \texttt{user\_addresses} lưu trữ các địa chỉ của người dùng.
@@ -113,6 +121,10 @@ Bảng \texttt{user\_addresses} lưu trữ các địa chỉ của người dùn
 \subsubsection{View}
 
 \subsubsection{Trigger}
+
+\subsubsection{Procedure}
+
+\subsubsection{Function}
 
 \subsection{Table phone\_numbers}
 
@@ -126,6 +138,10 @@ Bảng \texttt{user\_phone\_numbers} lưu trữ các số điện thoại của 
 
 \subsubsection{Trigger}
 
+\subsubsection{Procedure}
+
+\subsubsection{Function}
+
 \section{Product}
 
 \subsection{Table product}
@@ -134,11 +150,104 @@ Bảng \texttt{user\_phone\_numbers} lưu trữ các số điện thoại của 
 
 \subsubsection{Index}
 
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\underline{trigger trg\_after\_insert\_variant:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_after_insert_variant
+AFTER INSERT ON variants
+FOR EACH ROW
+BEGIN
+    UPDATE products
+    SET total_quantity = total_quantity + NEW.quantity
+    WHERE id = NEW.id;
+END;
+\end{verbatim}
+
+Mục đích: tăng total\_quantity trong products khi thêm sản phẩm mới (variant).
+
+\underline{trigger trg\_after\_insert\_order\_item\_sold:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_after_insert_order_item_sold
+AFTER INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE products p
+    JOIN variants v ON p.id = v.product_id
+    SET p.total_quantity_sold = p.total_quantity_sold + NEW.quantity
+    WHERE v.id = NEW.variant_id;
+END;
+\end{verbatim}
+
+Mục đích: cập nhật total\_quantity\_sold khi bán sản phẩm.
+
+\underline{trigger trg\_after\_delete\_order\_item\_sold:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_after_delete_order_item_sold
+AFTER DELETE ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE products p
+    JOIN variants v ON p.id = v.product_id
+    SET p.total_quantity_sold = p.total_quantity_sold - OLD.quantity
+    WHERE v.id = OLD.variant_id;
+END;
+\end{verbatim}
+
+Mục đích: cập nhật total\_quantity\_sold khi hoàn hàng.
+
+\underline{trigger trg\_before\_insert\_product\_price:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_before_insert_product_price
+BEFORE INSERT ON products
+FOR EACH ROW
+BEGIN
+    SET NEW.final_price = NEW.price * (1 - NEW.discount_percentage / 100);
+END;
+\end{verbatim}
+
+Mục đích: khi có discount\_percentage thì tự động tính và cập nhật giá sau giảm (final\_price).
+
+\underline{trigger trg\_soft\_delete\_product:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_soft_delete_product
+AFTER UPDATE ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.deleted = 1 AND OLD.deleted = 0 THEN
+        UPDATE variants
+        SET deleted = 1
+        WHERE product_id = NEW.id;
+    END IF;
+END;
+\end{verbatim}
+
+Mục đích: khi product bị xóa mềm thì các variants liên quan cũng được xóa mềm.
+
+\subsubsection{Procedure}
+
+\subsubsection{Function}
+
 \subsection{Table type}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
+
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\subsubsection{Procedure}
+
+\subsubsection{Function}
 
 \subsection{Table type\_values}
 
@@ -146,11 +255,270 @@ Bảng \texttt{user\_phone\_numbers} lưu trữ các số điện thoại của 
 
 \subsubsection{Index}
 
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\subsubsection{Procedure}
+
+\subsubsection{Function}
+
 \subsection{Table variants}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
+
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\underline{trigger trg\_soft\_delete\_variant:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_soft_delete_variant
+AFTER UPDATE ON variants
+FOR EACH ROW
+BEGIN
+    IF NEW.deleted = 1 AND OLD.deleted = 0 THEN
+        UPDATE variant_values
+        SET deleted = 1
+        WHERE variant_id = NEW.id;
+    END IF;
+END;
+\end{verbatim}
+
+Mục đích: khi variant bị xóa mềm thì các variant\_values liên quan cũng bị xóa mềm, không cần lan ngược lên product.
+
+\underline{trigger trg\_variant\_insert\_quantity:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_variant_insert_quantity
+AFTER INSERT ON variants
+FOR EACH ROW
+BEGIN
+    UPDATE products
+    SET total_quantity = total_quantity + NEW.quantity
+    WHERE id = NEW.product_id;
+END;
+\end{verbatim}
+
+Mục đích: khi thêm variant mới thì cập nhật lại total\_quantity của product tương ứng.
+
+\underline{trigger trg\_order\_item\_insert:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_order_item_insert
+AFTER INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE variants
+    SET quantity = quantity - NEW.quantity,
+        quantity_sold = quantity_sold + NEW.quantity
+    WHERE id = NEW.variant_id;
+END;
+\end{verbatim}
+
+Mục đích: cập nhật quantity và quantity\_sold của variant sau khi thêm đơn hàng.
+
+\underline{trigger trg\_order\_item\_delete:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_order_item_delete
+AFTER DELETE ON order_items
+FOR EACH ROW
+BEGIN
+    UPDATE variants
+    SET quantity = quantity + OLD.quantity,
+        quantity_sold = quantity_sold - OLD.quantity
+    WHERE id = OLD.variant_id;
+END;
+\end{verbatim}
+
+Mục đích: cập nhật quantity và quantity\_sold của variant sau khi hủy/xóa đơn hàng.
+
+\underline{trigger trg\_variant\_update\_delta:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_variant_update_delta
+AFTER UPDATE ON variants
+FOR EACH ROW
+BEGIN
+    DECLARE a INT;
+    DECLARE b INT;
+
+    SET a = NEW.quantity - OLD.quantity;
+    SET b = NEW.quantity_sold - OLD.quantity_sold;
+
+    UPDATE products
+    SET total_quantity = total_quantity + a,
+        total_quantity_sold = total_quantity_sold + b
+    WHERE id = NEW.product_id;
+END;
+\end{verbatim}
+
+Mục đích: cập nhật total\_quantity và total\_quantity\_sold của product khi dữ liệu variants thay đổi.
+
+\underline{trigger trg\_variant\_insert:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_variant_insert
+AFTER INSERT ON variants
+FOR EACH ROW
+BEGIN
+    UPDATE products
+    SET total_quantity = total_quantity + NEW.quantity,
+        total_quantity_sold = total_quantity_sold + NEW.quantity_sold
+    WHERE id = NEW.product_id;
+END;
+\end{verbatim}
+
+Mục đích: sau khi thêm variant vào bảng variants thì cập nhật lại total\_quantity và total\_quantity\_sold ở bảng products.
+
+\underline{trigger trg\_variant\_delete:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_variant_delete
+AFTER DELETE ON variants
+FOR EACH ROW
+BEGIN
+    UPDATE products
+    SET total_quantity = total_quantity - OLD.quantity,
+        total_quantity_sold = total_quantity_sold - OLD.quantity_sold
+    WHERE id = OLD.product_id;
+END;
+\end{verbatim}
+
+Mục đích: cập nhật lại total\_quantity và total\_quantity\_sold của product sau khi xóa một variant.
+
+\subsubsection{Procedure}
+
+\underline{procedure sp\_get\_products\_by\_category:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_products_by_category(IN p_category_id INT)
+BEGIN
+    SELECT *
+    FROM products
+    WHERE category_id = p_category_id
+      AND deleted = 0;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: lấy danh sách sản phẩm theo category (chỉ lấy sản phẩm chưa bị xóa mềm).
+
+\underline{procedure sp\_create\_order:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE PROCEDURE sp_create_order(
+    IN p_user_id INT,
+    IN p_variant_id INT,
+    IN p_quantity INT
+)
+BEGIN
+    DECLARE oid INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+    END;
+
+    START TRANSACTION;
+
+    INSERT INTO orders(user_id)
+    VALUES (p_user_id);
+
+    SET oid = LAST_INSERT_ID();
+
+    INSERT INTO order_items(order_id, variant_id, quantity)
+    VALUES (oid, p_variant_id, p_quantity);
+
+    COMMIT;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: tạo đơn hàng với transaction, đảm bảo nếu có lỗi thì rollback toàn bộ.
+
+\subsubsection{Function}
+
+\underline{function fn\_final\_price:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE FUNCTION fn_final_price(
+    p_price DECIMAL(10,2),
+    p_discount INT
+)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    RETURN p_price * (1 - p_discount / 100);
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: tính giá cuối cùng của sản phẩm sau khi áp dụng phần trăm giảm giá.
+
+\underline{function fn\_total\_stock:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE FUNCTION fn_total_stock(p_product_id INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    RETURN (
+        SELECT IFNULL(SUM(quantity), 0)
+        FROM variants
+        WHERE product_id = p_product_id
+          AND deleted = 0
+    );
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: tính tổng số lượng tồn kho của một product từ các variants (chỉ tính các variant chưa bị xóa mềm).
+
+\underline{function fn\_hot\_variant\_by\_product:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE FUNCTION fn_hot_variant_by_product(p_product_id INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE v_id INT;
+
+    SELECT v.id
+    INTO v_id
+    FROM order_items oi
+    JOIN variants v ON oi.variant_id = v.id
+    WHERE v.product_id = p_product_id
+      AND v.deleted = 0
+    GROUP BY v.id
+    ORDER BY SUM(oi.quantity) DESC
+    LIMIT 1;
+
+    RETURN v_id;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: trả về id của variant bán chạy nhất (hot) trong các variants của một product.
 
 \subsection{Table variant\_values}
 
@@ -158,11 +526,44 @@ Bảng \texttt{user\_phone\_numbers} lưu trữ các số điện thoại của 
 
 \subsubsection{Index}
 
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\subsubsection{Procedure}
+
+\subsubsection{Function}
+
 \subsection{Table product\_extra\_images}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
+
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\underline{trigger trg\_soft\_delete\_product\_images:}
+
+\begin{verbatim}
+CREATE TRIGGER trg_soft_delete_product_images
+AFTER UPDATE ON products
+FOR EACH ROW
+BEGIN
+    IF NEW.deleted = 1 THEN
+        UPDATE product_extra_images
+        SET deleted = 1
+        WHERE product_id = NEW.id;
+    END IF;
+END;
+\end{verbatim}
+
+Mục đích: khi product bị xóa mềm thì các ảnh (product\_extra\_images) liên quan cũng được xóa mềm.
+
+\subsubsection{Procedure}
+
+\subsubsection{Function}
 
 \subsection{Table product\_reviews}
 
@@ -170,11 +571,174 @@ Bảng \texttt{user\_phone\_numbers} lưu trữ các số điện thoại của 
 
 \subsubsection{Index}
 
-\subsection{Table product\_review\_images}
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\subsubsection{Procedure}
+
+\underline{procedure sp\_get\_reviews:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_reviews(IN p_product_id INT)
+BEGIN
+    SELECT *
+    FROM product_reviews
+    WHERE product_id = p_product_id
+      AND deleted = 0
+    ORDER BY created_at DESC;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: lấy danh sách review của một sản phẩm, sắp xếp theo thời gian mới nhất và loại bỏ các review đã bị xóa mềm.
+
+\underline{procedure sp\_get\_products\_with\_rating:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_products_with_rating()
+BEGIN
+    SELECT p.*,
+           fn_avg_rating(p.id) AS avg_rating,
+           fn_count_review(p.id) AS total_reviews
+    FROM products p
+    WHERE p.deleted = 0;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: lấy danh sách sản phẩm kèm điểm đánh giá trung bình và tổng số lượt review.
+
+\underline{procedure sp\_soft\_delete\_review:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE PROCEDURE sp_soft_delete_review(IN p_review_id INT)
+BEGIN
+    UPDATE product_reviews
+    SET deleted = 1
+    WHERE id = p_review_id;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: thực hiện xóa mềm một product\_review theo id.
+
+\subsubsection{Function}
+
+\underline{function fn\_avg\_rating:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE FUNCTION fn_avg_rating(p_product_id INT)
+RETURNS DECIMAL(3,2)
+DETERMINISTIC
+BEGIN
+    RETURN (
+        SELECT IFNULL(AVG(rating), 0)
+        FROM product_reviews
+        WHERE product_id = p_product_id
+          AND deleted = 0
+    );
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: tính điểm đánh giá trung bình (rating) của một product từ các review chưa bị xóa mềm.
+
+\underline{function fn\_count\_review:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE FUNCTION fn_count_review(p_product_id INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+RETURN (
+SELECT COUNT(*)
+FROM product_reviews
+WHERE product_id = p_product_id
+AND deleted = 0
+);
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: Đếm số lượng review của một product chưa bị xóa mềm.
+
+\subsection{Table product\_daily}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
+
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\subsubsection{Procedure}
+
+\underline{procedure sp\_update\_product\_daily:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE PROCEDURE sp_update_product_daily(IN p_date DATE)
+BEGIN
+    DECLARE v_revenue DECIMAL(12,2);
+    DECLARE v_orders INT;
+
+    -- Tổng doanh thu trong ngày
+    SELECT IFNULL(SUM(oi.quantity * v.price), 0)
+    INTO v_revenue
+    FROM orders o
+    JOIN order_items oi ON o.id = oi.order_id
+    JOIN variants v ON oi.variant_id = v.id
+    WHERE DATE(o.created_at) = p_date;
+
+    -- Tổng số đơn trong ngày
+    SELECT COUNT(*)
+    INTO v_orders
+    FROM orders
+    WHERE DATE(created_at) = p_date;
+
+    -- Cập nhật bảng product_daily
+    UPDATE product_daily
+    SET total_revenue = v_revenue,
+        total_orders = v_orders
+    WHERE date = p_date;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: tính tổng doanh thu và số lượng đơn hàng trong một ngày và cập nhật vào bảng product\_daily.
+
+\underline{event ev\_update\_daily:}
+
+\begin{verbatim}
+CREATE EVENT ev_update_daily
+ON SCHEDULE EVERY 1 DAY
+STARTS CURRENT_DATE + INTERVAL 1 DAY
+DO
+CALL sp_update_product_daily(CURDATE());
+\end{verbatim}
+
+Mục đích: tự động chạy procedure mỗi ngày để cập nhật doanh thu và số đơn vào cuối ngày.
+
+\subsubsection{Function}
 
 \section{Category}
 
@@ -185,6 +749,101 @@ Bảng \texttt{categories} lưu trữ các danh mục sản phẩm.
 \subsection{Index}
 
 \subsection{View}
+
+\subsubsection{Trigger}
+
+\underline{trigger trg\_soft\_delete\_category:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE TRIGGER trg_soft_delete_category
+AFTER UPDATE ON categories
+FOR EACH ROW
+BEGIN
+    IF NEW.deleted = 1 AND OLD.deleted = 0 THEN
+        UPDATE products
+        SET deleted = 1
+        WHERE category_id = NEW.id;
+    END IF;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: khi category bị xóa mềm thì các product thuộc category đó cũng được xóa mềm.
+
+\subsubsection{Procedure}
+
+\underline{procedure sp\_top\_products\_by\_day\_category:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE PROCEDURE sp_top_products_by_day_category(
+    IN p_date DATE,
+    IN p_category_id INT
+)
+BEGIN
+    SELECT p.id, p.name, SUM(oi.quantity) AS total_sold
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    JOIN variants v ON oi.variant_id = v.id
+    JOIN products p ON v.product_id = p.id
+    WHERE DATE(o.created_at) = p_date
+      AND p.category_id = p_category_id
+      AND p.deleted = 0
+    GROUP BY p.id
+    ORDER BY total_sold DESC
+    LIMIT 10;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: lấy 10 sản phẩm bán chạy nhất trong một ngày theo từng category.
+
+\underline{procedure sp\_get\_products\_by\_category:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE PROCEDURE sp_get_products_by_category(IN p_category_id INT)
+BEGIN
+    SELECT *
+    FROM products
+    WHERE category_id = p_category_id
+      AND deleted = 0;
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: lấy danh sách sản phẩm theo category (chỉ bao gồm sản phẩm chưa bị xóa mềm).
+
+\subsubsection{Function}
+
+\underline{function fn\_count\_products\_by\_category:}
+
+\begin{verbatim}
+DELIMITER $$
+
+CREATE FUNCTION fn_count_products_by_category(p_category_id INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+RETURN (
+SELECT COUNT(*)
+FROM products
+WHERE category_id = p_category_id
+AND deleted = 0
+);
+END$$
+
+DELIMITER ;
+\end{verbatim}
+
+Mục đích: Đếm số sản phẩm trong một category (chưa bị xóa mềm).
 
 \section{Order}
 
@@ -198,11 +857,23 @@ Bảng \texttt{categories} lưu trữ các danh mục sản phẩm.
 
 \subsubsection{Trigger}
 
+\subsubsection{Procedure}
+
+\subsubsection{Function}
+
 \subsection{Table order\_tracking\_locations}
 
 \subsubsection{Cấu trúc bảng}
 
 \subsubsection{Index}
+
+\subsubsection{View}
+
+\subsubsection{Trigger}
+
+\subsubsection{Procedure}
+
+\subsubsection{Function}
 
 \section{Transaction}
 
@@ -215,6 +886,10 @@ Bảng \texttt{transactions} lưu trữ thông tin giao dịch thanh toán.
 \subsection{View}
 
 \subsection{Trigger}
+
+\subsubsection{Procedure}
+
+\subsubsection{Function}
 
 \section{Notification}
 
